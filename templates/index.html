@@ -1,0 +1,113 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Timbratrice</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
+</head>
+<body class="bg-gray-50 flex items-center justify-center min-h-screen font-sans">
+
+    <div class="bg-white p-8 rounded-3xl shadow-xl w-full max-w-sm mx-4 flex flex-col items-center" x-data="timbraturaData()">
+        
+        <div class="w-full flex justify-end mb-4">
+            <button @click="logout" class="text-gray-400 hover:text-red-500 transition-colors text-sm font-medium">Scollega Dispositivo</button>
+        </div>
+
+        <div class="w-24 h-24 bg-blue-100 rounded-full flex items-center justify-center mb-6 text-blue-600 shadow-inner">
+            <svg xmlns="http://www.w3.org/2000/svg" class="h-12 w-12" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+            </svg>
+        </div>
+        
+        <h2 class="text-2xl font-bold text-gray-800 text-center mb-1">{{ user.nome_cognome }}</h2>
+        
+        <div class="text-4xl font-mono text-gray-700 my-6 tracking-tight" x-text="currentTime"></div>
+
+        <!-- Success Notification -->
+        <div x-show="successMessage" x-transition.opacity
+             class="absolute top-4 bg-green-500 text-white px-6 py-3 rounded-full shadow-lg font-bold flex items-center space-x-2 z-50"
+             style="display: none;">
+            <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />
+            </svg>
+            <span x-text="successMessage"></span>
+        </div>
+
+        <div x-show="errorMessage" x-text="errorMessage" class="text-red-500 text-center font-medium mb-4" style="display: none;"></div>
+
+        <div class="w-full grid grid-cols-2 gap-4 mt-4">
+            <button @click="timbra('IN')" 
+                    class="bg-green-500 hover:bg-green-600 text-white font-bold py-6 rounded-2xl shadow-lg transition-all active:scale-95 flex flex-col items-center justify-center disabled:opacity-50"
+                    :disabled="loading || cooldown">
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-8 w-8 mb-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 16l-4-4m0 0l4-4m-4 4h14m-5 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h7a3 3 0 013 3v1" />
+                </svg>
+                ENTRATA
+            </button>
+            <button @click="timbra('OUT')" 
+                    class="bg-red-500 hover:bg-red-600 text-white font-bold py-6 rounded-2xl shadow-lg transition-all active:scale-95 flex flex-col items-center justify-center disabled:opacity-50"
+                    :disabled="loading || cooldown">
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-8 w-8 mb-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
+                </svg>
+                USCITA
+            </button>
+        </div>
+    </div>
+
+    <script>
+        function timbraturaData() {
+            return {
+                currentTime: '',
+                loading: false,
+                cooldown: false,
+                successMessage: '',
+                errorMessage: '',
+                init() {
+                    this.updateTime();
+                    setInterval(() => this.updateTime(), 1000);
+                },
+                updateTime() {
+                    const now = new Date();
+                    this.currentTime = now.toLocaleTimeString('it-IT', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+                },
+                async timbra(tipo) {
+                    this.loading = true;
+                    this.errorMessage = '';
+                    try {
+                        const response = await fetch('/api/timbra', {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({ tipo: tipo })
+                        });
+                        
+                        if (response.ok) {
+                            this.successMessage = tipo === 'IN' ? 'Entrata registrata!' : 'Uscita registrata!';
+                            this.cooldown = true;
+                            setTimeout(() => {
+                                this.successMessage = '';
+                                this.cooldown = false;
+                            }, 3000); // 3 seconds cooldown and notification
+                        } else {
+                            const data = await response.json();
+                            this.errorMessage = data.detail || 'Errore durante la timbratura';
+                        }
+                    } catch (e) {
+                        this.errorMessage = 'Errore di connessione al server';
+                    } finally {
+                        this.loading = false;
+                    }
+                },
+                async logout() {
+                    if (confirm("Vuoi scollegare questo dispositivo? Non potrai più timbrare finché l'amministratore non azzererà il vincolo.")) {
+                        await fetch('/api/logout', { method: 'POST' });
+                        window.location.reload();
+                    }
+                }
+            }
+        }
+    </script>
+</body>
+</html>

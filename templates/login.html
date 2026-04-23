@@ -1,0 +1,72 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Login Presenze</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
+    <style>
+        body { background-color: #f3f4f6; }
+    </style>
+</head>
+<body class="flex items-center justify-center min-h-screen">
+
+    <div class="bg-white p-8 rounded-2xl shadow-xl w-full max-w-sm mx-4" x-data="loginData()">
+        <div class="text-center mb-8">
+            <h1 class="text-2xl font-bold text-gray-800">Accesso Sistema</h1>
+            <p class="text-gray-500 text-sm mt-2">Inserisci il tuo PIN personale per associare questo dispositivo.</p>
+        </div>
+
+        <form @submit.prevent="submitPin" class="space-y-6">
+            <div>
+                <input type="password" inputmode="numeric" pattern="[0-9]*" 
+                       class="w-full text-center text-4xl tracking-widest p-4 border-2 border-gray-300 rounded-xl focus:border-blue-500 focus:ring-blue-500 outline-none transition-all"
+                       placeholder="••••" x-model="pin" maxlength="10" required>
+            </div>
+
+            <div x-show="error" x-text="error" class="text-red-500 text-center font-medium text-sm" style="display: none;"></div>
+
+            <button type="submit" 
+                    class="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-4 rounded-xl transition-colors shadow-lg active:scale-95 transform disabled:opacity-50"
+                    :disabled="loading || pin.length === 0">
+                <span x-show="!loading">Associa Dispositivo</span>
+                <span x-show="loading">Attendi...</span>
+            </button>
+        </form>
+    </div>
+
+    <script>
+        function loginData() {
+            return {
+                pin: '',
+                error: '',
+                loading: false,
+                async submitPin() {
+                    this.error = '';
+                    this.loading = true;
+                    try {
+                        const response = await fetch('/api/login', {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+                            body: new URLSearchParams({ pin: this.pin })
+                        });
+                        
+                        const data = await response.json();
+                        
+                        if (response.ok) {
+                            window.location.reload();
+                        } else {
+                            this.error = data.detail || 'Errore durante l\'accesso';
+                        }
+                    } catch (e) {
+                        this.error = 'Errore di connessione al server';
+                    } finally {
+                        this.loading = false;
+                    }
+                }
+            }
+        }
+    </script>
+</body>
+</html>

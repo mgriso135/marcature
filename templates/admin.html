@@ -1,0 +1,262 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Pannello Amministratore - Presenze</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
+</head>
+<body class="bg-gray-100 min-h-screen font-sans">
+
+    <nav class="bg-gray-800 text-white p-4 shadow-md">
+        <div class="container mx-auto flex justify-between items-center">
+            <h1 class="text-xl font-bold">Amministrazione Presenze</h1>
+            <a href="/api/la-stanza-dei-bottoni/export?user_id={{ filters.user_id }}&start_date={{ filters.start_date }}&end_date={{ filters.end_date }}&sort_by={{ filters.sort_by }}&sort_order={{ filters.sort_order }}" class="bg-green-600 hover:bg-green-700 px-4 py-2 rounded text-sm font-semibold transition-colors flex items-center">
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+                </svg>
+                Esporta CSV
+            </a>
+        </div>
+    </nav>
+
+    <div class="container mx-auto p-6 grid grid-cols-1 lg:grid-cols-3 gap-6" x-data="adminData()">
+        
+        <!-- Sidebar: Gestione Dipendenti -->
+        <div class="lg:col-span-1 bg-white rounded-xl shadow p-6">
+            <h2 class="text-lg font-bold border-b pb-2 mb-4">Gestione Dipendenti</h2>
+            
+            <form @submit.prevent="addUser" class="mb-6 bg-gray-50 p-4 rounded-lg border">
+                <h3 class="text-sm font-semibold mb-3 text-gray-700">Nuovo Dipendente</h3>
+                <div class="space-y-3">
+                    <input type="text" x-model="newUser.nome_cognome" placeholder="Nome e Cognome" class="w-full p-2 border rounded focus:ring-blue-500" required>
+                    <input type="text" x-model="newUser.pin" placeholder="PIN Univoco" class="w-full p-2 border rounded focus:ring-blue-500" required>
+                    <div x-show="error" x-text="error" class="text-red-500 text-xs font-semibold"></div>
+                    <button type="submit" class="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 rounded transition-colors text-sm">
+                        Aggiungi
+                    </button>
+                </div>
+            </form>
+
+            <div class="space-y-3 max-h-[500px] overflow-y-auto pr-2">
+                {% for u in users %}
+                <div class="bg-white border rounded-lg p-4 flex flex-col shadow-sm {% if not u.is_active %} opacity-50 {% endif %}">
+                    <div class="flex justify-between items-center mb-2">
+                        <span class="font-bold text-gray-800">{{ u.nome_cognome }}</span>
+                        <span class="text-xs bg-gray-200 text-gray-700 px-2 py-1 rounded font-mono">PIN: {{ u.pin }}</span>
+                    </div>
+                    <div class="flex justify-between items-center mt-2 border-t pt-2">
+                        <div>
+                            {% if u.device_token %}
+                            <span class="text-xs text-green-600 font-semibold bg-green-100 px-2 py-1 rounded">Dispositivo Associato</span>
+                            {% else %}
+                            <span class="text-xs text-yellow-600 font-semibold bg-yellow-100 px-2 py-1 rounded">Nessun Dispositivo</span>
+                            {% endif %}
+                        </div>
+                        <div class="flex space-x-2">
+                            {% if u.device_token %}
+                            <button @click="resetDevice({{ u.id }})" class="text-xs bg-orange-100 hover:bg-orange-200 text-orange-700 px-2 py-1 rounded transition-colors" title="Sblocca Dispositivo">
+                                Reset Vincolo
+                            </button>
+                            {% endif %}
+                            {% if u.is_active %}
+                            <button @click="deleteUser({{ u.id }})" class="text-xs bg-red-100 hover:bg-red-200 text-red-700 px-2 py-1 rounded transition-colors" title="Disattiva">
+                                Disattiva
+                            </button>
+                            {% endif %}
+                        </div>
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+        </div>
+
+        <!-- Main Content: Log Timbrature -->
+        <div class="lg:col-span-2 bg-white rounded-xl shadow overflow-hidden relative">
+            <div class="p-6 border-b flex flex-col xl:flex-row justify-between items-start xl:items-center gap-4">
+                <h2 class="text-lg font-bold">Timbrature</h2>
+                
+                <form method="GET" action="/la-stanza-dei-bottoni" class="flex flex-wrap gap-2 text-sm">
+                    <select name="user_id" class="border rounded p-1">
+                        <option value="">Tutti i dipendenti</option>
+                        {% for u in users %}
+                        <option value="{{ u.id }}" {% if filters.user_id == u.id %}selected{% endif %}>{{ u.nome_cognome }}</option>
+                        {% endfor %}
+                    </select>
+                    <input type="date" name="start_date" value="{{ filters.start_date }}" class="border rounded p-1" title="Data Inizio">
+                    <input type="date" name="end_date" value="{{ filters.end_date }}" class="border rounded p-1" title="Data Fine">
+                    <button type="submit" class="bg-blue-600 text-white px-3 py-1 rounded hover:bg-blue-700 transition">Filtra</button>
+                    <a href="/la-stanza-dei-bottoni" class="bg-gray-200 text-gray-700 px-3 py-1 rounded hover:bg-gray-300 transition">Reset</a>
+                </form>
+
+                <button @click="openAddLogModal()" class="bg-green-500 hover:bg-green-600 text-white px-3 py-1 text-sm rounded font-bold shadow transition-colors whitespace-nowrap">+ Aggiungi</button>
+            </div>
+            <div class="overflow-x-auto">
+                <table class="w-full text-left border-collapse">
+                    <thead>
+                        <tr class="bg-gray-50 text-gray-700 border-b">
+                            <th class="p-4 font-semibold cursor-pointer hover:bg-gray-200 transition-colors" @click="toggleSort('dipendente')">
+                                Dipendente 
+                                {% if filters.sort_by == 'dipendente' %}{% if filters.sort_order == 'asc' %}↑{% else %}↓{% endif %}{% endif %}
+                            </th>
+                            <th class="p-4 font-semibold text-center">Tipo</th>
+                            <th class="p-4 font-semibold cursor-pointer hover:bg-gray-200 transition-colors" @click="toggleSort('data')">
+                                Data e Ora
+                                {% if filters.sort_by == 'data' %}{% if filters.sort_order == 'asc' %}↑{% else %}↓{% endif %}{% endif %}
+                            </th>
+                            <th class="p-4 font-semibold text-right">Azioni</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for log in logs %}
+                        <tr class="border-b hover:bg-gray-50 transition-colors">
+                            <td class="p-4 text-gray-800 font-medium">{{ log.nome_cognome }}</td>
+                            <td class="p-4 text-center">
+                                {% if log.tipo_timbratura == 'IN' %}
+                                <span class="bg-green-100 text-green-700 px-3 py-1 rounded-full text-xs font-bold">ENTRATA</span>
+                                {% else %}
+                                <span class="bg-red-100 text-red-700 px-3 py-1 rounded-full text-xs font-bold">USCITA</span>
+                                {% endif %}
+                            </td>
+                            <td class="p-4 text-gray-500 text-sm">{{ log.formatted_timestamp }}</td>
+                            <td class="p-4 text-right space-x-2 whitespace-nowrap">
+                                <button @click="openEditLogModal({{ log.id }}, '{{ log.tipo_timbratura }}', '{{ log.timestamp }}')" class="text-blue-500 hover:text-blue-700 text-sm font-semibold transition-colors">Modifica</button>
+                                <button @click="deleteLog({{ log.id }})" class="text-red-500 hover:text-red-700 text-sm font-semibold transition-colors">Elimina</button>
+                            </td>
+                        </tr>
+                        {% else %}
+                        <tr>
+                            <td colspan="4" class="p-8 text-center text-gray-500">Nessuna timbratura registrata o trovata.</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+    <!-- Modal Add/Edit Log -->
+    <div x-show="logModal.open" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50" style="display: none;">
+        <div class="bg-white rounded-xl p-6 w-96 shadow-2xl transform transition-all" @click.away="logModal.open = false">
+            <h3 class="text-xl font-bold mb-4 text-gray-800" x-text="logModal.isEdit ? 'Modifica Timbratura' : 'Aggiungi Timbratura'"></h3>
+            <form @submit.prevent="submitLog" class="space-y-4">
+                <div x-show="!logModal.isEdit">
+                    <label class="block text-sm font-semibold mb-1 text-gray-700">Dipendente</label>
+                    <select x-model="logModal.user_id" class="w-full border-gray-300 border rounded-lg p-2 focus:ring-blue-500 focus:border-blue-500" :required="!logModal.isEdit">
+                        <option value="">Seleziona...</option>
+                        {% for u in users %}
+                        <option value="{{ u.id }}">{{ u.nome_cognome }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div>
+                    <label class="block text-sm font-semibold mb-1 text-gray-700">Tipo</label>
+                    <select x-model="logModal.tipo_timbratura" class="w-full border-gray-300 border rounded-lg p-2 focus:ring-blue-500 focus:border-blue-500" required>
+                        <option value="IN">ENTRATA</option>
+                        <option value="OUT">USCITA</option>
+                    </select>
+                </div>
+                <div>
+                    <label class="block text-sm font-semibold mb-1 text-gray-700">Data e Ora</label>
+                    <input type="datetime-local" step="1" x-model="logModal.timestamp" class="w-full border-gray-300 border rounded-lg p-2 focus:ring-blue-500 focus:border-blue-500" required>
+                </div>
+                <div class="flex justify-end space-x-3 mt-6">
+                    <button type="button" @click="logModal.open = false" class="bg-gray-200 hover:bg-gray-300 text-gray-800 font-semibold px-4 py-2 rounded-lg transition-colors">Annulla</button>
+                    <button type="submit" class="bg-blue-600 hover:bg-blue-700 text-white font-bold px-4 py-2 rounded-lg transition-colors shadow">Salva</button>
+                </div>
+            </form>
+        </div>
+    </div>
+    </div>
+
+    <script>
+        function adminData() {
+            return {
+                newUser: { nome_cognome: '', pin: '' },
+                error: '',
+                logModal: { open: false, isEdit: false, id: null, user_id: '', tipo_timbratura: 'IN', timestamp: '' },
+                
+                toggleSort(column) {
+                    const params = new URLSearchParams(window.location.search);
+                    let currentSort = params.get('sort_by') || 'data';
+                    let currentOrder = params.get('sort_order') || 'desc';
+                    
+                    if (currentSort === column) {
+                        currentOrder = currentOrder === 'asc' ? 'desc' : 'asc';
+                    } else {
+                        currentOrder = 'asc';
+                    }
+                    
+                    params.set('sort_by', column);
+                    params.set('sort_order', currentOrder);
+                    
+                    window.location.search = params.toString();
+                },
+
+                openAddLogModal() {
+                    this.logModal = { open: true, isEdit: false, id: null, user_id: '', tipo_timbratura: 'IN', timestamp: this.formatDateForInput(new Date()) };
+                },
+                openEditLogModal(id, tipo, timestampStr) {
+                    // Normalizziamo l'output SQLite "YYYY-MM-DD HH:MM:SS" a "YYYY-MM-DDTHH:MM:SS" per input HTML
+                    let normalizedTime = timestampStr.replace(' ', 'T');
+                    this.logModal = { open: true, isEdit: true, id: id, user_id: '', tipo_timbratura: tipo, timestamp: normalizedTime };
+                },
+                formatDateForInput(d) {
+                    const pad = n => n.toString().padStart(2, '0');
+                    return d.getFullYear() + '-' + pad(d.getMonth()+1) + '-' + pad(d.getDate()) + 'T' + pad(d.getHours()) + ':' + pad(d.getMinutes()) + ':' + pad(d.getSeconds());
+                },
+                async submitLog() {
+                    const url = this.logModal.isEdit ? `/api/la-stanza-dei-bottoni/logs/${this.logModal.id}` : `/api/la-stanza-dei-bottoni/logs`;
+                    const method = this.logModal.isEdit ? 'PUT' : 'POST';
+                    
+                    const payload = {
+                        tipo_timbratura: this.logModal.tipo_timbratura,
+                        timestamp: this.logModal.timestamp.replace('T', ' ')
+                    };
+                    if (!this.logModal.isEdit) payload.user_id = this.logModal.user_id;
+
+                    const res = await fetch(url, {
+                        method: method,
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify(payload)
+                    });
+                    if (res.ok) window.location.reload();
+                    else alert((await res.json()).detail);
+                },
+                async deleteLog(id) {
+                    if (confirm("Sei sicuro di voler eliminare questa timbratura?")) {
+                        await fetch(`/api/la-stanza-dei-bottoni/logs/${id}`, { method: 'DELETE' });
+                        window.location.reload();
+                    }
+                },
+                async addUser() {
+                    this.error = '';
+                    const res = await fetch('/api/la-stanza-dei-bottoni/users', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify(this.newUser)
+                    });
+                    if (res.ok) {
+                        window.location.reload();
+                    } else {
+                        const data = await res.json();
+                        this.error = data.detail;
+                    }
+                },
+                async resetDevice(userId) {
+                    if(confirm('Sei sicuro di voler azzerare il vincolo dispositivo per questo dipendente?')) {
+                        await fetch(`/api/la-stanza-dei-bottoni/users/${userId}/reset`, { method: 'POST' });
+                        window.location.reload();
+                    }
+                },
+                async deleteUser(userId) {
+                    if(confirm('Sei sicuro di voler disattivare questo dipendente?')) {
+                        await fetch(`/api/la-stanza-dei-bottoni/users/${userId}`, { method: 'DELETE' });
+                        window.location.reload();
+                    }
+                }
+            }
+        }
+    </script>
+</body>
+</html>
