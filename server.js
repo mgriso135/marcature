@@ -182,6 +182,16 @@ app.get('/la-stanza-dei-bottoni', async (req, res) => {
     
     const users = await all(`SELECT * FROM users WHERE is_admin = 0`);
     
+    // Calcolo presenze attuali
+    const presenceData = await all(`
+        SELECT u.id, u.nome_cognome, 
+               (SELECT tipo_timbratura FROM logs WHERE user_id = u.id ORDER BY timestamp DESC LIMIT 1) as last_status
+        FROM users u
+        WHERE u.is_admin = 0 AND u.is_active = 1
+    `);
+    const presentEmployees = presenceData.filter(u => u.last_status === 'IN');
+    const absentEmployees = presenceData.filter(u => u.last_status !== 'IN');
+    
     let query = `
         SELECT logs.*, users.nome_cognome 
         FROM logs 
@@ -222,6 +232,8 @@ app.get('/la-stanza-dei-bottoni', async (req, res) => {
     res.render('admin.html', { 
         users, 
         logs, 
+        presentEmployees,
+        absentEmployees,
         filters: { 
             user_id: user_id || '', 
             start_date: start_date || '', 
