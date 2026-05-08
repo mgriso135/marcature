@@ -37,6 +37,7 @@ app.set('view engine', 'html');
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 app.use(cookieParser());
+app.use('/img', express.static(path.join(__dirname, 'img')));
 
 // Setup Database
 const db = new sqlite3.Database('./presenze.db');
@@ -112,6 +113,10 @@ app.get('/', async (req, res) => {
     if (!user || (user.device_user_agent && user.device_user_agent !== currentUserAgent)) {
         return res.render('login.html');
     }
+    
+    const lastLog = await get(`SELECT tipo_timbratura FROM logs WHERE user_id = ? ORDER BY timestamp DESC LIMIT 1`, [user.id]);
+    user.last_status = lastLog ? lastLog.tipo_timbratura : null;
+
     return res.render('index.html', { user });
 });
 
