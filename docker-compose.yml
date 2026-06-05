@@ -1,0 +1,21 @@
+version: '3.8'
+
+services:
+  web:
+    build: .
+    container_name: marcature_web
+    restart: always
+    ports:
+      - "8000:8000"
+    environment:
+      - ADMIN_PASSWORD=Verona
+      # Connessione al database PostgreSQL condiviso
+      # NOTA: Assicurati di impostare il nome corretto del database alla fine (es. /presenze o /global_admin)
+      - DATABASE_URL=postgres://global_admin:KaizenKey2026++@global_production_postgres:5432/presenze
+    networks:
+      - shared-network
+
+networks:
+  shared-network:
+    external: true
+    name: shared-prod-net

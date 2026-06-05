@@ -63,6 +63,23 @@
             </div>
         </div>
 
+        <!-- Filtri Globali -->
+        <div class="lg:col-span-3 bg-white rounded-xl shadow p-4 flex flex-col md:flex-row justify-between items-center gap-4">
+            <h2 class="text-md font-bold text-gray-700">Filtro Intervallo e Dipendente</h2>
+            <form method="GET" action="/la-stanza-dei-bottoni" class="flex flex-wrap gap-2 text-sm items-center w-full md:w-auto">
+                <select name="user_id" class="border rounded p-2 focus:ring-blue-500 focus:border-blue-500">
+                    <option value="">Tutti i dipendenti</option>
+                    {% for u in users %}
+                    <option value="{{ u.id }}" {% if filters.user_id == u.id | string %}selected{% endif %}>{{ u.nome_cognome }}</option>
+                    {% endfor %}
+                </select>
+                <input type="date" name="start_date" value="{{ filters.start_date }}" class="border rounded p-2 focus:ring-blue-500 focus:border-blue-500" title="Data Inizio">
+                <input type="date" name="end_date" value="{{ filters.end_date }}" class="border rounded p-2 focus:ring-blue-500 focus:border-blue-500" title="Data Fine">
+                <button type="submit" class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded font-semibold transition-colors">Filtra</button>
+                <a href="/la-stanza-dei-bottoni" class="bg-gray-200 hover:bg-gray-300 text-gray-700 px-4 py-2 rounded font-semibold transition-colors">Reset</a>
+            </form>
+        </div>
+
         <!-- Sidebar: Gestione Dipendenti -->
         <div class="lg:col-span-1 bg-white rounded-xl shadow p-6">
             <h2 class="text-lg font-bold border-b pb-2 mb-4">Gestione Dipendenti</h2>
@@ -112,25 +129,50 @@
             </div>
         </div>
 
-        <!-- Main Content: Log Timbrature -->
-        <div class="lg:col-span-2 bg-white rounded-xl shadow overflow-hidden relative">
-            <div class="p-6 border-b flex flex-col xl:flex-row justify-between items-start xl:items-center gap-4">
-                <h2 class="text-lg font-bold">Timbrature</h2>
-                
-                <form method="GET" action="/la-stanza-dei-bottoni" class="flex flex-wrap gap-2 text-sm">
-                    <select name="user_id" class="border rounded p-1">
-                        <option value="">Tutti i dipendenti</option>
-                        {% for u in users %}
-                        <option value="{{ u.id }}" {% if filters.user_id == u.id %}selected{% endif %}>{{ u.nome_cognome }}</option>
+        <!-- Ore Giornaliere Lavorate -->
+        <div class="lg:col-span-2 bg-white rounded-xl shadow overflow-hidden relative flex flex-col">
+            <div class="p-6 border-b flex justify-between items-center">
+                <h2 class="text-lg font-bold">Ore Giornaliere Lavorate</h2>
+            </div>
+            <div class="overflow-x-auto flex-1 max-h-[500px]">
+                <table class="w-full text-left border-collapse">
+                    <thead>
+                        <tr class="bg-gray-50 text-gray-700 border-b">
+                            <th class="p-4 font-semibold">Data</th>
+                            <th class="p-4 font-semibold">Dipendente</th>
+                            <th class="p-4 font-semibold text-right">Ore Lavorate</th>
+                            <th class="p-4 font-semibold text-right">Ore Decimali</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for day in dailyHoursList %}
+                        <tr class="border-b hover:bg-gray-50 transition-colors {% if day.hours_status == 'underwork' %}bg-red-50/50{% elif day.hours_status == 'overtime' %}bg-yellow-50/50{% endif %}">
+                            <td class="p-4 text-gray-800 font-medium">{{ day.date }}</td>
+                            <td class="p-4 text-gray-800">{{ day.nome_cognome }}</td>
+                            <td class="p-4 text-right whitespace-nowrap">
+                                <span class="{% if day.hours_status == 'underwork' %}text-red-600 font-bold bg-red-100/80 px-2.5 py-1 rounded border border-red-200{% elif day.hours_status == 'overtime' %}text-yellow-700 font-bold bg-yellow-100 px-2.5 py-1 rounded border border-yellow-200{% else %}text-green-600 font-semibold bg-green-50 px-2.5 py-1 rounded border border-green-200{% endif %}">
+                                    {{ day.formatted_hours }}
+                                </span>
+                            </td>
+                            <td class="p-4 text-right font-mono {% if day.hours_status == 'underwork' %}text-red-700 font-semibold{% elif day.hours_status == 'overtime' %}text-yellow-700 font-semibold{% else %}text-gray-600{% endif %} text-sm">
+                                {{ day.decimal_hours }} h
+                            </td>
+                        </tr>
+                        {% else %}
+                        <tr>
+                            <td colspan="4" class="p-8 text-center text-gray-500">Nessun dato calcolato per il periodo selezionato.</td>
+                        </tr>
                         {% endfor %}
-                    </select>
-                    <input type="date" name="start_date" value="{{ filters.start_date }}" class="border rounded p-1" title="Data Inizio">
-                    <input type="date" name="end_date" value="{{ filters.end_date }}" class="border rounded p-1" title="Data Fine">
-                    <button type="submit" class="bg-blue-600 text-white px-3 py-1 rounded hover:bg-blue-700 transition">Filtra</button>
-                    <a href="/la-stanza-dei-bottoni" class="bg-gray-200 text-gray-700 px-3 py-1 rounded hover:bg-gray-300 transition">Reset</a>
-                </form>
+                    </tbody>
+                </table>
+            </div>
+        </div>
 
-                <button @click="openAddLogModal()" class="bg-green-500 hover:bg-green-600 text-white px-3 py-1 text-sm rounded font-bold shadow transition-colors whitespace-nowrap">+ Aggiungi</button>
+        <!-- Main Content: Log Timbrature -->
+        <div class="lg:col-span-3 bg-white rounded-xl shadow overflow-hidden relative">
+            <div class="p-6 border-b flex justify-between items-center">
+                <h2 class="text-lg font-bold">Registro Timbrature Dettagliato</h2>
+                <button @click="openAddLogModal()" class="bg-green-500 hover:bg-green-600 text-white px-4 py-2 text-sm rounded font-bold shadow transition-colors whitespace-nowrap">+ Aggiungi Timbratura</button>
             </div>
             <div class="overflow-x-auto">
                 <table class="w-full text-left border-collapse">

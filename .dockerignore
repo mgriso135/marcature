@@ -1,0 +1,11 @@
+node_modules
+npm-debug.log
+.env
+.git
+.gitignore
+presenze.db
+migrate.js
+README.md
+task.md
+walkthrough.md
+implementation_plan.md

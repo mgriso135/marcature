@@ -2,7 +2,7 @@ require('dotenv').config();
 const express = require('express');
 const nunjucks = require('nunjucks');
 const cookieParser = require('cookie-parser');
-const sqlite3 = require('sqlite3').verbose();
+const { Pool } = require('pg');
 const { v4: uuidv4 } = require('uuid');
 const path = require('path');
 
@@ -39,61 +39,61 @@ app.use(express.urlencoded({ extended: true }));
 app.use(cookieParser());
 app.use('/img', express.static(path.join(__dirname, 'img')));
 
-// Setup Database
-const db = new sqlite3.Database('./presenze.db');
+// Setup Database PostgreSQL
+const pool = new Pool({
+    connectionString: process.env.DATABASE_URL
+});
 
-// Wrapper per usare await con sqlite3
-const run = (query, params = []) => new Promise((resolve, reject) => {
-    db.run(query, params, function (err) {
-        if (err) reject(err);
-        else resolve(this);
-    });
-});
-const get = (query, params = []) => new Promise((resolve, reject) => {
-    db.get(query, params, (err, row) => {
-        if (err) reject(err);
-        else resolve(row);
-    });
-});
-const all = (query, params = []) => new Promise((resolve, reject) => {
-    db.all(query, params, (err, rows) => {
-        if (err) reject(err);
-        else resolve(rows);
-    });
-});
+// Helper wrappers compatibili con sqlite3, adattati per pg
+const run = async (query, params = []) => {
+    return await pool.query(query, params);
+};
+
+const get = async (query, params = []) => {
+    const res = await pool.query(query, params);
+    return res.rows[0];
+};
+
+const all = async (query, params = []) => {
+    const res = await pool.query(query, params);
+    return res.rows;
+};
+
+// Formattatore di date per uniformità con formato stringa SQLite (YYYY-MM-DD HH:MM:SS)
+function formatTimestamp(d) {
+    if (!d) return '';
+    const dateObj = d instanceof Date ? d : new Date(String(d).replace(' ', 'T'));
+    if (isNaN(dateObj.getTime())) return String(d);
+    const pad = n => n.toString().padStart(2, '0');
+    return `${dateObj.getFullYear()}-${pad(dateObj.getMonth() + 1)}-${pad(dateObj.getDate())} ${pad(dateObj.getHours())}:${pad(dateObj.getMinutes())}:${pad(dateObj.getSeconds())}`;
+}
 
 async function initDB() {
     await run(`
         CREATE TABLE IF NOT EXISTS users (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            id SERIAL PRIMARY KEY,
             nome_cognome TEXT,
             pin TEXT UNIQUE,
             device_token TEXT UNIQUE,
             device_user_agent TEXT,
-            is_active BOOLEAN DEFAULT 1,
-            is_admin BOOLEAN DEFAULT 0
+            is_active BOOLEAN DEFAULT TRUE,
+            is_admin BOOLEAN DEFAULT FALSE
         )
     `);
     await run(`
         CREATE TABLE IF NOT EXISTS logs (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            id SERIAL PRIMARY KEY,
             user_id INTEGER,
-            timestamp DATETIME DEFAULT CURRENT_TIMESTAMP,
+            timestamp TIMESTAMP WITHOUT TIME ZONE DEFAULT CURRENT_TIMESTAMP,
             tipo_timbratura TEXT,
             FOREIGN KEY (user_id) REFERENCES users (id)
         )
     `);
 
-    try {
-        await run(`ALTER TABLE users ADD COLUMN device_user_agent TEXT`);
-    } catch (e) {
-        // Ignora l'errore se la colonna esiste già
-    }
-
     // Crea admin predefinito se non esiste
-    const admin = await get(`SELECT * FROM users WHERE is_admin = 1`);
+    const admin = await get(`SELECT * FROM users WHERE is_admin = TRUE`);
     if (!admin) {
-        await run(`INSERT INTO users (nome_cognome, pin, is_admin, is_active) VALUES (?, ?, 1, 1)`, ['Amministratore', '0000']);
+        await run(`INSERT INTO users (nome_cognome, pin, is_admin, is_active) VALUES ($1, $2, TRUE, TRUE)`, ['Amministratore', '0000']);
     }
 }
 initDB();
@@ -101,7 +101,7 @@ initDB();
 // Helper
 async function getCurrentUser(device_token) {
     if (!device_token) return null;
-    return await get(`SELECT * FROM users WHERE device_token = ? AND is_active = 1`, [device_token]);
+    return await get(`SELECT * FROM users WHERE device_token = $1 AND is_active = TRUE`, [device_token]);
 }
 
 // --- ROTTE FRONTEND ---
@@ -114,7 +114,7 @@ app.get('/', async (req, res) => {
         return res.render('login.html');
     }
     
-    const lastLog = await get(`SELECT tipo_timbratura FROM logs WHERE user_id = ? ORDER BY timestamp DESC LIMIT 1`, [user.id]);
+    const lastLog = await get(`SELECT tipo_timbratura FROM logs WHERE user_id = $1 ORDER BY timestamp DESC LIMIT 1`, [user.id]);
     user.last_status = lastLog ? lastLog.tipo_timbratura : null;
 
     return res.render('index.html', { user });
@@ -123,7 +123,7 @@ app.get('/', async (req, res) => {
 app.post('/api/login', async (req, res) => {
     try {
         const pin = req.body.pin;
-        const user = await get(`SELECT * FROM users WHERE pin = ?`, [pin]);
+        const user = await get(`SELECT * FROM users WHERE pin = $1`, [pin]);
         
         if (!user) {
             return res.status(400).json({ detail: 'PIN non valido.' });
@@ -137,7 +137,7 @@ app.post('/api/login', async (req, res) => {
 
         const newToken = uuidv4();
         const userAgent = req.headers['user-agent'] || 'Sconosciuto';
-        await run(`UPDATE users SET device_token = ?, device_user_agent = ? WHERE id = ?`, [newToken, userAgent, user.id]);
+        await run(`UPDATE users SET device_token = $1, device_user_agent = $2 WHERE id = $3`, [newToken, userAgent, user.id]);
 
         res.cookie('device_token', newToken, { maxAge: 315360000 * 1000, httpOnly: true }); // 10 anni
         res.json({ status: 'ok' });
@@ -159,7 +159,7 @@ app.post('/api/timbra', async (req, res) => {
     if (tipo !== 'IN' && tipo !== 'OUT') return res.status(400).json({ detail: 'Tipo timbratura non valido.' });
 
     // Verifica l'ultima timbratura per evitare doppi IN o doppi OUT
-    const lastLog = await get(`SELECT tipo_timbratura FROM logs WHERE user_id = ? ORDER BY timestamp DESC LIMIT 1`, [user.id]);
+    const lastLog = await get(`SELECT tipo_timbratura FROM logs WHERE user_id = $1 ORDER BY timestamp DESC LIMIT 1`, [user.id]);
     if (lastLog) {
         if (tipo === 'IN' && lastLog.tipo_timbratura === 'IN') {
             return res.status(400).json({ detail: "Hai già registrato l'entrata. Devi prima registrare l'uscita." });
@@ -169,8 +169,7 @@ app.post('/api/timbra', async (req, res) => {
         }
     }
 
-    // SQLite usa UTC per default, convertiamo in locale se preferito o salviamo l'orario locale
-    await run(`INSERT INTO logs (user_id, tipo_timbratura, timestamp) VALUES (?, ?, datetime('now', 'localtime'))`, [user.id, tipo]);
+    await run(`INSERT INTO logs (user_id, tipo_timbratura, timestamp) VALUES ($1, $2, NOW())`, [user.id, tipo]);
     res.json({ status: 'ok' });
 });
 
@@ -185,14 +184,14 @@ app.use('/api/la-stanza-dei-bottoni', basicAuth);
 app.get('/la-stanza-dei-bottoni', async (req, res) => {
     const { user_id, start_date, end_date, sort_by, sort_order } = req.query;
     
-    const users = await all(`SELECT * FROM users WHERE is_admin = 0`);
+    const users = await all(`SELECT * FROM users WHERE is_admin = FALSE`);
     
     // Calcolo presenze attuali
     const presenceData = await all(`
         SELECT u.id, u.nome_cognome, 
                (SELECT tipo_timbratura FROM logs WHERE user_id = u.id ORDER BY timestamp DESC LIMIT 1) as last_status
         FROM users u
-        WHERE u.is_admin = 0 AND u.is_active = 1
+        WHERE u.is_admin = FALSE AND u.is_active = TRUE
     `);
     const presentEmployees = presenceData.filter(u => u.last_status === 'IN');
     const absentEmployees = presenceData.filter(u => u.last_status !== 'IN');
@@ -204,17 +203,18 @@ app.get('/la-stanza-dei-bottoni', async (req, res) => {
         WHERE 1=1
     `;
     const params = [];
+    let pIdx = 1;
     
     if (user_id) {
-        query += ` AND logs.user_id = ?`;
+        query += ` AND logs.user_id = $${pIdx++}`;
         params.push(user_id);
     }
     if (start_date) {
-        query += ` AND date(logs.timestamp) >= ?`;
+        query += ` AND logs.timestamp::date >= $${pIdx++}`;
         params.push(start_date);
     }
     if (end_date) {
-        query += ` AND date(logs.timestamp) <= ?`;
+        query += ` AND logs.timestamp::date <= $${pIdx++}`;
         params.push(end_date);
     }
 
@@ -231,7 +231,96 @@ app.get('/la-stanza-dei-bottoni', async (req, res) => {
     const logs = await all(query, params);
 
     logs.forEach(log => {
+        log.timestamp = formatTimestamp(log.timestamp);
         log.formatted_timestamp = log.timestamp; 
+    });
+
+    // Calcolo ore giornaliere lavorate per ciascun dipendente
+    let logsQuery = `
+        SELECT logs.*, users.nome_cognome 
+        FROM logs 
+        JOIN users ON logs.user_id = users.id
+        WHERE users.is_admin = FALSE
+    `;
+    const logsParams = [];
+    if (user_id) {
+        logsQuery += ` AND logs.user_id = $1`;
+        logsParams.push(user_id);
+    }
+    logsQuery += ` ORDER BY logs.user_id ASC, logs.timestamp ASC`;
+    const allLogsForCalc = await all(logsQuery, logsParams);
+
+    allLogsForCalc.forEach(log => {
+        log.timestamp = formatTimestamp(log.timestamp);
+    });
+
+    const userDailyHours = {};
+    const lastIn = {};
+
+    function parseTimestamp(ts) {
+        if (!ts) return null;
+        return new Date(ts.replace(' ', 'T'));
+    }
+
+    allLogsForCalc.forEach(log => {
+        const uId = log.user_id;
+        if (log.tipo_timbratura === 'IN') {
+            lastIn[uId] = log.timestamp;
+        } else if (log.tipo_timbratura === 'OUT' && lastIn[uId]) {
+            const inTime = parseTimestamp(lastIn[uId]);
+            const outTime = parseTimestamp(log.timestamp);
+            if (inTime && outTime) {
+                const diffMs = outTime.getTime() - inTime.getTime();
+                if (diffMs > 0) {
+                    const dateStr = lastIn[uId].split(' ')[0]; // YYYY-MM-DD
+                    const key = `${uId}_${dateStr}`;
+                    if (!userDailyHours[key]) {
+                        userDailyHours[key] = {
+                            user_id: uId,
+                            nome_cognome: log.nome_cognome,
+                            date: dateStr,
+                            ms: 0
+                        };
+                    }
+                    userDailyHours[key].ms += diffMs;
+                }
+            }
+            lastIn[uId] = null; // Reset per accoppiare la prossima coppia
+        }
+    });
+
+    let dailyHoursList = Object.values(userDailyHours);
+    if (start_date) {
+        dailyHoursList = dailyHoursList.filter(item => item.date >= start_date);
+    }
+    if (end_date) {
+        dailyHoursList = dailyHoursList.filter(item => item.date <= end_date);
+    }
+
+    dailyHoursList.forEach(item => {
+        const totalMinutes = Math.round(item.ms / (1000 * 60));
+        const hours = Math.floor(totalMinutes / 60);
+        const minutes = totalMinutes % 60;
+        item.formatted_hours = `${hours}h ${minutes.toString().padStart(2, '0')}m`;
+        
+        const decVal = totalMinutes / 60;
+        item.decimal_hours = decVal.toFixed(2);
+        
+        // Evidenzia in rosso se meno di 8 ore, giallo se più di 9 ore
+        if (decVal < 8.0) {
+            item.hours_status = 'underwork';
+        } else if (decVal > 9.0) {
+            item.hours_status = 'overtime';
+        } else {
+            item.hours_status = 'normal';
+        }
+    });
+
+    dailyHoursList.sort((a, b) => {
+        if (a.date !== b.date) {
+            return b.date.localeCompare(a.date);
+        }
+        return a.nome_cognome.localeCompare(b.nome_cognome);
     });
 
     res.render('admin.html', { 
@@ -239,6 +328,7 @@ app.get('/la-stanza-dei-bottoni', async (req, res) => {
         logs, 
         presentEmployees,
         absentEmployees,
+        dailyHoursList,
         filters: { 
             user_id: user_id || '', 
             start_date: start_date || '', 
@@ -252,10 +342,10 @@ app.get('/la-stanza-dei-bottoni', async (req, res) => {
 app.post('/api/la-stanza-dei-bottoni/users', async (req, res) => {
     try {
         const { nome_cognome, pin } = req.body;
-        const existing = await get(`SELECT id FROM users WHERE pin = ?`, [pin]);
+        const existing = await get(`SELECT id FROM users WHERE pin = $1`, [pin]);
         if (existing) return res.status(400).json({ detail: 'PIN già in uso.' });
 
-        await run(`INSERT INTO users (nome_cognome, pin, is_active, is_admin) VALUES (?, ?, 1, 0)`, [nome_cognome, pin]);
+        await run(`INSERT INTO users (nome_cognome, pin, is_active, is_admin) VALUES ($1, $2, TRUE, FALSE)`, [nome_cognome, pin]);
         res.json({ status: 'ok' });
     } catch (e) {
         res.status(500).json({ detail: 'Errore interno del server' });
@@ -263,12 +353,12 @@ app.post('/api/la-stanza-dei-bottoni/users', async (req, res) => {
 });
 
 app.post('/api/la-stanza-dei-bottoni/users/:id/reset', async (req, res) => {
-    await run(`UPDATE users SET device_token = NULL WHERE id = ?`, [req.params.id]);
+    await run(`UPDATE users SET device_token = NULL WHERE id = $1`, [req.params.id]);
     res.json({ status: 'ok' });
 });
 
 app.delete('/api/la-stanza-dei-bottoni/users/:id', async (req, res) => {
-    await run(`UPDATE users SET is_active = 0 WHERE id = ?`, [req.params.id]);
+    await run(`UPDATE users SET is_active = FALSE WHERE id = $1`, [req.params.id]);
     res.json({ status: 'ok' });
 });
 
@@ -277,7 +367,7 @@ app.post('/api/la-stanza-dei-bottoni/logs', async (req, res) => {
     try {
         const { user_id, tipo_timbratura, timestamp } = req.body;
         if (!user_id || !tipo_timbratura || !timestamp) return res.status(400).json({ detail: 'Dati mancanti.' });
-        await run(`INSERT INTO logs (user_id, tipo_timbratura, timestamp) VALUES (?, ?, ?)`, [user_id, tipo_timbratura, timestamp]);
+        await run(`INSERT INTO logs (user_id, tipo_timbratura, timestamp) VALUES ($1, $2, $3)`, [user_id, tipo_timbratura, timestamp]);
         res.json({ status: 'ok' });
     } catch (e) {
         res.status(500).json({ detail: 'Errore interno del server' });
@@ -289,7 +379,7 @@ app.put('/api/la-stanza-dei-bottoni/logs/:id', async (req, res) => {
     try {
         const { tipo_timbratura, timestamp } = req.body;
         if (!tipo_timbratura || !timestamp) return res.status(400).json({ detail: 'Dati mancanti.' });
-        await run(`UPDATE logs SET tipo_timbratura = ?, timestamp = ? WHERE id = ?`, [tipo_timbratura, timestamp, req.params.id]);
+        await run(`UPDATE logs SET tipo_timbratura = $1, timestamp = $2 WHERE id = $3`, [tipo_timbratura, timestamp, req.params.id]);
         res.json({ status: 'ok' });
     } catch (e) {
         res.status(500).json({ detail: 'Errore interno del server' });
@@ -298,7 +388,7 @@ app.put('/api/la-stanza-dei-bottoni/logs/:id', async (req, res) => {
 
 // Elimina record timbratura
 app.delete('/api/la-stanza-dei-bottoni/logs/:id', async (req, res) => {
-    await run(`DELETE FROM logs WHERE id = ?`, [req.params.id]);
+    await run(`DELETE FROM logs WHERE id = $1`, [req.params.id]);
     res.json({ status: 'ok' });
 });
 
@@ -312,17 +402,18 @@ app.get('/api/la-stanza-dei-bottoni/export', async (req, res) => {
         WHERE 1=1
     `;
     const params = [];
+    let pIdx = 1;
     
     if (user_id) {
-        query += ` AND logs.user_id = ?`;
+        query += ` AND logs.user_id = $${pIdx++}`;
         params.push(user_id);
     }
     if (start_date) {
-        query += ` AND date(logs.timestamp) >= ?`;
+        query += ` AND logs.timestamp::date >= $${pIdx++}`;
         params.push(start_date);
     }
     if (end_date) {
-        query += ` AND date(logs.timestamp) <= ?`;
+        query += ` AND logs.timestamp::date <= $${pIdx++}`;
         params.push(end_date);
     }
 
@@ -340,7 +431,8 @@ app.get('/api/la-stanza-dei-bottoni/export', async (req, res) => {
     
     let csv = 'ID,Dipendente,Tipo,Data Ora\n';
     logs.forEach(l => {
-        csv += `${l.id},"${l.nome_cognome}",${l.tipo_timbratura},${l.timestamp}\n`;
+        const tsStr = formatTimestamp(l.timestamp);
+        csv += `${l.id},"${l.nome_cognome}",${l.tipo_timbratura},${tsStr}\n`;
     });
 
     res.header('Content-Type', 'text/csv');

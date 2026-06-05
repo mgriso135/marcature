@@ -1,0 +1,354 @@
+{
+  "users": [
+    {
+      "id": 1,
+      "nome_cognome": "Amministratore",
+      "pin": "0000",
+      "device_token": null,
+      "is_active": 1,
+      "is_admin": 1,
+      "device_user_agent": null
+    },
+    {
+      "id": 2,
+      "nome_cognome": "Matteo Griso",
+      "pin": "3512",
+      "device_token": "20f88441-4165-4ad4-866e-5461bc88be23",
+      "is_active": 1,
+      "is_admin": 0,
+      "device_user_agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/148.0.0.0 Safari/537.36"
+    },
+    {
+      "id": 3,
+      "nome_cognome": "Marco Pieretto",
+      "pin": "1234",
+      "device_token": "3f436424-2c67-4ab7-a491-a5821e7f4407",
+      "is_active": 1,
+      "is_admin": 0,
+      "device_user_agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/147.0.0.0 Safari/537.36"
+    },
+    {
+      "id": 4,
+      "nome_cognome": "Edy Pietrobon",
+      "pin": "4321",
+      "device_token": "ea7ac4ed-358a-4dc2-8c69-f4f11ced8d12",
+      "is_active": 1,
+      "is_admin": 0,
+      "device_user_agent": null
+    }
+  ],
+  "logs": [
+    {
+      "id": 1,
+      "user_id": 2,
+      "timestamp": "2026-04-23 14:31:16",
+      "tipo_timbratura": "IN"
+    },
+    {
+      "id": 2,
+      "user_id": 2,
+      "timestamp": "2026-04-23 14:31:31",
+      "tipo_timbratura": "OUT"
+    },
+    {
+      "id": 3,
+      "user_id": 2,
+      "timestamp": "2026-04-23 14:32:21",
+      "tipo_timbratura": "IN"
+    },
+    {
+      "id": 4,
+      "user_id": 2,
+      "timestamp": "2026-04-23 14:32:25",
+      "tipo_timbratura": "IN"
+    },
+    {
+      "id": 5,
+      "user_id": 2,
+      "timestamp": "2026-04-23 14:32:29",
+      "tipo_timbratura": "OUT"
+    },
+    {
+      "id": 6,
+      "user_id": 2,
+      "timestamp": "2026-04-23 14:33:38",
+      "tipo_timbratura": "IN"
+    },
+    {
+      "id": 7,
+      "user_id": 2,
+      "timestamp": "2026-04-23 14:35:44",
+      "tipo_timbratura": "OUT"
+    },
+    {
+      "id": 8,
+      "user_id": 2,
+      "timestamp": "2026-04-23 14:42:23",
+      "tipo_timbratura": "IN"
+    },
+    {
+      "id": 9,
+      "user_id": 2,
+      "timestamp": "2026-04-23 14:42:33",
+      "tipo_timbratura": "OUT"
+    },
+    {
+      "id": 10,
+      "user_id": 2,
+      "timestamp": "2026-04-23 14:42:39",
+      "tipo_timbratura": "IN"
+    },
+    {
+      "id": 11,
+      "user_id": 3,
+      "timestamp": "2026-04-23 14:44:52",
+      "tipo_timbratura": "IN"
+    },
+    {
+      "id": 12,
+      "user_id": 3,
+      "timestamp": "2026-04-23 14:44:58",
+      "tipo_timbratura": "OUT"
+    },
+    {
+      "id": 13,
+      "user_id": 3,
+      "timestamp": "2026-04-23 14:45:02",
+      "tipo_timbratura": "IN"
+    },
+    {
+      "id": 14,
+      "user_id": 3,
+      "timestamp": "2026-04-23 14:45:18",
+      "tipo_timbratura": "OUT"
+    },
+    {
+      "id": 15,
+      "user_id": 3,
+      "timestamp": "2026-04-23 14:45:32",
+      "tipo_timbratura": "IN"
+    },
+    {
+      "id": 16,
+      "user_id": 3,
+      "timestamp": "2026-04-23 14:45:37",
+      "tipo_timbratura": "OUT"
+    },
+    {
+      "id": 17,
+      "user_id": 2,
+      "timestamp": "2026-04-23 15:59:23",
+      "tipo_timbratura": "OUT"
+    },
+    {
+      "id": 18,
+      "user_id": 3,
+      "timestamp": "2026-04-23 14:52:47",
+      "tipo_timbratura": "IN"
+    },
+    {
+      "id": 19,
+      "user_id": 3,
+      "timestamp": "2026-04-23 14:52:52",
+      "tipo_timbratura": "OUT"
+    },
+    {
+      "id": 20,
+      "user_id": 4,
+      "timestamp": "2026-04-23 16:12:42",
+      "tipo_timbratura": "IN"
+    },
+    {
+      "id": 21,
+      "user_id": 4,
+      "timestamp": "2026-04-23 16:13:05",
+      "tipo_timbratura": "OUT"
+    },
+    {
+      "id": 22,
+      "user_id": 4,
+      "timestamp": "2026-04-23 16:14:30",
+      "tipo_timbratura": "IN"
+    },
+    {
+      "id": 23,
+      "user_id": 4,
+      "timestamp": "2026-04-23 17:15:36",
+      "tipo_timbratura": "OUT"
+    },
+    {
+      "id": 24,
+      "user_id": 2,
+      "timestamp": "2026-04-23 16:00",
+      "tipo_timbratura": "IN"
+    },
+    {
+      "id": 27,
+      "user_id": 2,
+      "timestamp": "2026-04-23 23:50:13",
+      "tipo_timbratura": "OUT"
+    },
+    {
+      "id": 29,
+      "user_id": 3,
+      "timestamp": "2026-04-23 22:33:41",
+      "tipo_timbratura": "IN"
+    },
+    {
+      "id": 30,
+      "user_id": 3,
+      "timestamp": "2026-04-23 22:33:45",
+      "tipo_timbratura": "OUT"
+    },
+    {
+      "id": 31,
+      "user_id": 3,
+      "timestamp": "2026-04-23 22:34:14",
+      "tipo_timbratura": "IN"
+    },
+    {
+      "id": 32,
+      "user_id": 3,
+      "timestamp": "2026-04-23 22:34:26",
+      "tipo_timbratura": "OUT"
+    },
+    {
+      "id": 33,
+      "user_id": 3,
+      "timestamp": "2026-04-23 22:34:30",
+      "tipo_timbratura": "IN"
+    },
+    {
+      "id": 34,
+      "user_id": 2,
+      "timestamp": "2026-05-08 14:50:55",
+      "tipo_timbratura": "OUT"
+    },
+    {
+      "id": 35,
+      "user_id": 2,
+      "timestamp": "2026-05-08 14:50:59",
+      "tipo_timbratura": "IN"
+    },
+    {
+      "id": 36,
+      "user_id": 2,
+      "timestamp": "2026-05-08 16:59:50",
+      "tipo_timbratura": "OUT"
+    },
+    {
+      "id": 37,
+      "user_id": 2,
+      "timestamp": "2026-05-08 16:59:54",
+      "tipo_timbratura": "IN"
+    },
+    {
+      "id": 38,
+      "user_id": 2,
+      "timestamp": "2026-05-08 16:59:58",
+      "tipo_timbratura": "OUT"
+    },
+    {
+      "id": 39,
+      "user_id": 2,
+      "timestamp": "2026-05-08 17:00:53",
+      "tipo_timbratura": "IN"
+    },
+    {
+      "id": 40,
+      "user_id": 2,
+      "timestamp": "2026-05-08 17:07:48",
+      "tipo_timbratura": "OUT"
+    },
+    {
+      "id": 41,
+      "user_id": 2,
+      "timestamp": "2026-05-08 17:07:52",
+      "tipo_timbratura": "IN"
+    },
+    {
+      "id": 42,
+      "user_id": 2,
+      "timestamp": "2026-05-08 17:07:56",
+      "tipo_timbratura": "OUT"
+    },
+    {
+      "id": 43,
+      "user_id": 2,
+      "timestamp": "2026-05-08 21:41:33",
+      "tipo_timbratura": "IN"
+    },
+    {
+      "id": 44,
+      "user_id": 2,
+      "timestamp": "2026-05-08 21:41:37",
+      "tipo_timbratura": "OUT"
+    },
+    {
+      "id": 45,
+      "user_id": 2,
+      "timestamp": "2026-05-08 21:41:49",
+      "tipo_timbratura": "IN"
+    },
+    {
+      "id": 46,
+      "user_id": 2,
+      "timestamp": "2026-05-08 21:41:53",
+      "tipo_timbratura": "OUT"
+    },
+    {
+      "id": 47,
+      "user_id": 2,
+      "timestamp": "2026-05-08 21:41:58",
+      "tipo_timbratura": "IN"
+    },
+    {
+      "id": 48,
+      "user_id": 2,
+      "timestamp": "2026-05-08 21:42:02",
+      "tipo_timbratura": "OUT"
+    },
+    {
+      "id": 49,
+      "user_id": 2,
+      "timestamp": "2026-05-08 21:42:09",
+      "tipo_timbratura": "IN"
+    },
+    {
+      "id": 50,
+      "user_id": 2,
+      "timestamp": "2026-05-08 21:42:13",
+      "tipo_timbratura": "OUT"
+    },
+    {
+      "id": 51,
+      "user_id": 2,
+      "timestamp": "2026-05-08 21:50:19",
+      "tipo_timbratura": "IN"
+    },
+    {
+      "id": 52,
+      "user_id": 2,
+      "timestamp": "2026-05-08 21:50:23",
+      "tipo_timbratura": "OUT"
+    },
+    {
+      "id": 53,
+      "user_id": 2,
+      "timestamp": "2026-05-08 21:50:27",
+      "tipo_timbratura": "IN"
+    },
+    {
+      "id": 54,
+      "user_id": 2,
+      "timestamp": "2026-05-22 09:15:19",
+      "tipo_timbratura": "OUT"
+    },
+    {
+      "id": 55,
+      "user_id": 2,
+      "timestamp": "2026-05-22 09:15:22",
+      "tipo_timbratura": "IN"
+    }
+  ]
+}
