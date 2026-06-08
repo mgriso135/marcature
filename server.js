@@ -106,12 +106,23 @@ async function getCurrentUser(device_token) {
 
 // --- ROTTE FRONTEND ---
 app.get('/', async (req, res) => {
-    const user = await getCurrentUser(req.cookies.device_token);
+    /*const user = await getCurrentUser(req.cookies.device_token);
     const currentUserAgent = req.headers['user-agent'] || 'Sconosciuto';
 
     // Se l'utente non c'è, o se lo User-Agent registrato è diverso da quello attuale, blocchiamo l'accesso
     if (!user || (user.device_user_agent && user.device_user_agent !== currentUserAgent)) {
         return res.render('login.html');
+    }*/
+    const user = await getCurrentUser(req.cookies.device_token);
+    const currentUserAgent = req.headers['user-agent'] || 'Sconosciuto';
+
+    if (!user) {
+        return res.render('login.html');
+    }
+
+    // Se lo User-Agent è cambiato, aggiornalo silenziosamente
+    if (user.device_user_agent && user.device_user_agent !== currentUserAgent) {
+        await run(`UPDATE users SET device_user_agent = $1 WHERE id = $2`, [currentUserAgent, user.id]);
     }
     
     const lastLog = await get(`SELECT tipo_timbratura FROM logs WHERE user_id = $1 ORDER BY timestamp DESC LIMIT 1`, [user.id]);
